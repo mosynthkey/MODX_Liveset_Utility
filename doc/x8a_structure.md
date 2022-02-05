@@ -3,20 +3,14 @@
 ## DLST
 ```
 0x04 byte : "DLST"
-0x08 byte : NumOfBanks
-/*
-    When there is/are 1 Bank : <Buffer 00 01 1f 75 00 00 00 00>
-                                         + 0x1f 71
-                      2 Bank : <Buffer 00 02 3e e6 00 00 00 00>
-                                         + 0x1f 71
-                      3 Bank : <Buffer 00 03 5e 57 00 00 00 00>
-                                         + 0x1f 71
-                      4 Bank : <Buffer 00 04 7d c8 00 00 00 00>
-*/
+0x04 byte : Size ("Num of banks" - end of this section)
+0x04 byte : Num of banks
 
 Bank x 8 {
     0x04 byte : "Data"
-    0x08 byte : ?, Always <Buffer 00 01 1f 69 00 01 1f>
+    0x04 byte : Size from here to end of section : Always <Buffer 00 01 1f 69>
+
+    0x04 byte : Size from here to end of section : Always <Buffer 00 01 1f 65>
     0x15 byte : Bank Name
 
     Page x 16 {
@@ -35,21 +29,21 @@ Bank x 8 {
 ## ELST
 ```
 0x04 byte : "ELST" : 
-0x04 byte : ?
-0x04 byte : Num of banks?
-/*
-    When there is/are 1 Bank : <Buffer 00 00 00 38 00 00 00 01>
-                                              0x34
-                      2 Bank : <Buffer 00 00 00 6c 00 00 00 02>
-                                              0x34
-                      3 Bank : <Buffer 00 00 00 a0 00 00 00 03>
-                                              0x26
-                      4 Bank : <Buffer 00 00 00 c6 00 00 00 04>
-*/
+0x04 byte : Size ("Num of banks" - end of this section)
+0x04 byte : Num of banks
 
 Bank x 8 {
-    0x04 byte : "Entr" : 
-    0x1a byte : ?
+    0x04 byte : "Entr"
+    0x04 byte : Size from here to the end of this section
+    
+    0x04 byte : <Buffer 00 01 1f 69>
+    0x02 byte : bankIndex
+    0x02 byte : size? 0x0c + 0x1F71 * bankIndex
+    0x02 byte : <Buffer 00 01>
+    0x02 byte : bankIndex
+    0x08 byte : blank
+    0x02 byte : ?
+
     var  size : name
     0x02 byte : 0, 0
 }
