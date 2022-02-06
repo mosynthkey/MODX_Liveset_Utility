@@ -1,13 +1,10 @@
 // YAMAHA MODX Liveset Utility
 // Copyright © 2021 Masaki Ono. All rights reserved.
 
-'use strict';
-
-const fs = require("fs");
-
-// see doc/x8a_structure.md for detail
-
 // these const values are only used in ModxLivesetUtility
+
+import { Buffer } from 'buffer';
+
 const NUM_BANK = 8;
 const NUM_PAGE = 16;
 const NUM_SLOT = 16;
@@ -43,17 +40,17 @@ class ModxLivesetUtility {
     setX8ADataBuffer(x8aDataBuffer) {
         this.initialize();
 
-        this.x8aDataBuffer_ = x8aDataBuffer;
+        this.x8aDataBuffer_ = Buffer.from(x8aDataBuffer);
 
         // Search DLST from header
-        const header_buffer = x8aDataBuffer.subarray(0, 0x110);
+        const header_buffer = x8aDataBuffer.slice(0, 0x110);
         let dlst_addr_index = header_buffer.indexOf(Buffer.from('DLST'));
         if (dlst_addr_index < 0) throw('DLST not found in the header');
         dlst_addr_index += 0x04;
-        const dlst_addr = x8aDataBuffer.subarray(dlst_addr_index, dlst_addr_index + 4).readInt32BE();
+        const dlst_addr = x8aDataBuffer.readInt32BE(dlst_addr_index);
 
         // Mark addresses
-        this.numOfBanks_ = x8aDataBuffer.subarray(dlst_addr + 4, dlst_addr + 4 + 2).readInt16BE();
+        this.numOfBanks_ = x8aDataBuffer.readInt16BE(dlst_addr + 4);
         if (NUM_BANK < this.numOfBanks_) throw("Invalid number of banks")
         console.log("Num of banks : " + this.numOfBanks_);
 
@@ -84,17 +81,17 @@ class ModxLivesetUtility {
         if (elst_addr_index < 0) throw('ELST not found');
         elst_addr_index += 0x04;
 
-        const elst_addr = x8aDataBuffer.subarray(elst_addr_index, elst_addr_index + 4).readInt32BE();
+        const elst_addr = x8aDataBuffer.readInt32BE(elst_addr_index);
 
         readIndex = elst_addr + 0x0c;
         for (let bankIndex = 0; bankIndex < this.numOfBanks_; ++bankIndex) {
             readIndex += 0x04; // Skip "Entr"
 
-            const size = x8aDataBuffer.subarray(readIndex, readIndex + 4).readInt32BE();
+            const size = x8aDataBuffer.readInt32BE(readIndex);
             readIndex += 0x04;
             const name_length = size - 0x16 - 0x02;
 
-            console.log(x8aDataBuffer.subarray(readIndex + 0x14, readIndex + 0x16));
+            console.log(x8aDataBuffer.slice(readIndex + 0x14, readIndex + 0x16));
             readIndex += 0x16;
 
             console.log(this.createValidStringFromNullTerminatedBufferIndex(readIndex, name_length + 0x02));
@@ -187,31 +184,11 @@ class ModxLivesetUtility {
     }
 
     createValidStringFromNullTerminatedBufferIndex(index, size) {
-        const buffer = this.x8aDataBuffer_.subarray(index, index + size);
-        return buffer.subarray(0, buffer.indexOf(0)).toString();
+        const buffer = this.x8aDataBuffer_.slice(index, index + size);
+        return buffer.slice(0, buffer.indexOf(0)).toString();
     }
 }
 
-function printLivesetContents(fileName) {
-    try {
-        let utility = new ModxLivesetUtility();
-        utility.setX8ADataBuffer(fs.readFileSync(fileName));
-        utility.print();
-
-        console.log("---");
-
-        utility.swapAllPages(2, 5);
-
-        utility.print();
-
-        const modifiedDataBuffer = utility.getX8ADataBuffer();
-        const writeFileName = fileName.substring(0, fileName.lastIndexOf(".")) + "_mod.x8a"
-        fs.writeFileSync(writeFileName, modifiedDataBuffer);
-    } catch (e) {
-        console.log(e);
-    }
+export default {
+    ModxLivesetUtility
 };
-
-if (process.argv.length <= 2) throw("Few args");
-console.log(process.argv[2]);
-printLivesetContents(process.argv[2]);
