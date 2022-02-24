@@ -1,7 +1,8 @@
 <template> 
     <div id='ModxLivesetUtility'>
-        <h1> MODX LIVESET Utility </h1> 
-        <input type = "file" @change = "uploadFile"/><br>
+        MODX LIVESET Utility
+        <q-file v-model="model" label="Click to pick .x8a file" @input="uploadFile" style="max-width: 300px"/>
+        
 
         <div v-for="bank in banks" :key="bank.index">
             <b>Bank {{bank.index}} : {{ bank.name }}</b>
@@ -13,14 +14,13 @@
             </div>
             <hr>
         </div>
-        <b-button variant="primary">bootstrap</b-button>
-
     </div> 
 </template>
 
 <script>
 import Utility from "../modx_liveset_utility"
 import { Buffer } from 'buffer';
+import { ref } from 'vue';
 
 export default {
     name: 'ModxLivesetUtility',
@@ -28,6 +28,7 @@ export default {
         return {
             message: "",
             banks : [],
+            model: ref(null)
         };
     },
     created() {
@@ -45,6 +46,8 @@ export default {
     },
     methods: {
         uploadFile(file) {
+            console.log(this.model);
+
             const fileObject = file.target.files[0];
 
             let fileReader = new FileReader();
