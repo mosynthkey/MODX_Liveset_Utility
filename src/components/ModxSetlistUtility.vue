@@ -3,78 +3,57 @@
         <q-layout class="shadow-2 rounded-borders">
             <q-header>
                 <q-toolbar>
-                    <q-btn flat round dense icon="menu" class="q-mr-sm"></q-btn>
+                    <q-toolbar-title>MODX LiveSet Utility</q-toolbar-title>
 
-                    <q-toolbar-title>MODX LIVESET Utility</q-toolbar-title>
+                    <q-file ref="fileOpenRef" class="hidden" @input="uploadFile"></q-file>
 
-                    <q-file label="Upload" @input="uploadFile">
-                        <template v-slot:prepend>
-                            <q-icon name="cloud_upload" />
-                        </template>
-                    </q-file>
-
-                    <q-btn label="Download" @click="download()" no-caps />
-                    <q-btn label="Debug" @click="debug()" no-caps />
+                    <q-btn label="Open" @click="openFile()" no-caps />
+                    <q-btn v-if="isLoaded" label="Download" @click="download()" no-caps />
 
                 </q-toolbar>
             </q-header>
 
-
-
             <q-page-container>
                 <q-page>
                     <div v-if="isLoaded">
-                        <div v-for="bank in banks" :key="bank.index">
-                            <div class="q-pa-md row items-start q-gutter-md">
-                                <q-card class="my-card" flat bordered>
-                                    <q-card-section horizontal>
-                                        <q-card-section class="q-pt-xs">
-                                            <div class="text-h5 q-mt-sm q-mb-xs">{{ bank.name }}</div>
-                                        </q-card-section>
+                        <div class="q-pa-md row items-center q-gutter-md">
+                            <q-card class="my-card" flat bordered v-for="bank in banks" :key="bank.index">
+                                <q-card-section horizontal>
+                                    <q-card-section class="q-pa-xs">
+                                        <b>{{ bank.name }}</b>
                                     </q-card-section>
+                                </q-card-section>
+                                
 
-                                    <q-separator />
+                                 <q-separator />
 
-                                    <q-list bordered class="rounded-borders" style="max-width: 600px" v-for="page in bank.pages" :key="page.index">
-                                        <q-item>
-                                            <q-item-section top>
-                                                {{ page.name }}
-                                            </q-item-section>
+                                <q-card-actions>
+                                    <q-btn :disable="bank.index==0"  @click="swapBank(bank.index, bank.index - 1)" class="gt-xs" size="10px" flat dense round icon="west" />
+                                    <q-btn :disable="bank.index==7" @click="swapBank(bank.index, bank.index + 1)" class="gt-xs" size="10px" flat dense round icon="east" />
+                                </q-card-actions>
 
-                                            <q-item-section top side>
-                                                <div class="text-grey-8 q-gutter-xs">
-                                                    <q-btn class="gt-xs" size="12px" flat dense round icon="delete" />
-                                                    <q-btn class="gt-xs" size="12px" flat dense round icon="done" />
-                                                    <q-btn size="12px" flat dense round icon="more_vert" />
-                                                </div>
-                                            </q-item-section>
+                                <q-list dense class="rounded-borders" style="max-width: 600px"
+                                    v-for="page in bank.pages" :key="page.index">
+                                    <q-item>
+                                        <q-item-section top>
+                                            {{ page.name }}
+                                        </q-item-section>
 
-                                        </q-item>
-                                    </q-list>
-                                    <q-separator />
-                                    <q-card-actions>
+                                        <q-item-section top side>
+                                            <div class="text-grey-8 q-gutter-xs">
+                                                <q-btn :disabled="page.index==0"  @click="swapPage(bank.index, page.index, page.index - 1)" class="gt-xs" size="10px" flat dense round icon="arrow_upward" />
+                                                <q-btn :disabled="page.index==15" @click="swapPage(bank.index, page.index, page.index + 1)" class="gt-xs" size="10px" flat dense round icon="arrow_downward" />
+                                                <q-btn @click="copyPage(bank.index, page.index)" class="gt-xs" size="10px" flat dense round icon="content_copy" />
+                                                <q-btn :disable="clipBoard.bankIndex==-1" @click="pastePage(bank.index, page.index)" class="gt-xs" size="10px" flat dense round icon="content_paste" />
+                                            </div>
+                                        </q-item-section>
 
+                                    </q-item>
+                                </q-list>
 
-                                    <q-btn flat round icon="event" />
-                                        <q-btn flat>
-                                            7:30PM
-                                        </q-btn>
-                                        <q-btn flat color="primary">
-                                            Reserve
-                                        </q-btn>
-                                    </q-card-actions>
-                                </q-card>
-                            </div>
-                            <!--
-                            <b>Bank {{bank.index}} : {{ bank.name }}</b>
-                            <div v-for="page in bank.pages" :key="page.index">
-                                Page {{page.index}} : {{ page.name }}
-                                <div v-for="slot in page.slots" :key="slot.index">
-                                    {{ slot.comment }}
-                                </div>
-                            </div>
-                            -->
+                            </q-card>
                         </div>
+
                     </div>
                     <div v-else>
                         Please load file using a button on header
@@ -87,35 +66,31 @@
 
 <script setup>
     import Utility from "../modx_liveset_utility"
-    import {
-        Buffer
-    } from 'buffer';
-    import {
-        exportFile
-    } from 'quasar'
-    import {
-        ref
-    } from 'vue'
+    import { Buffer } from 'buffer';
+    import { exportFile } from 'quasar'
+    import { ref } from 'vue'
 
     let isLoaded = ref(false);
     let utility = ref(new Utility.ModxLivesetUtility());
     let banks = ref(new Array(8));
+    let fileOpenRef = ref(null);
+    let clipBoard = ref({bankIndex:-1, pageIndex:-1});
 
     for (let bankIndex = 0; bankIndex < 8; ++bankIndex) {
         banks.value[bankIndex] = {
             name: "",
-            index: bankIndex + 1,
+            index: bankIndex,
             pages: new Array(16)
         };
         for (let pageIndex = 0; pageIndex < 16; ++pageIndex) {
             banks.value[bankIndex].pages[pageIndex] = {
                 name: "",
-                index: pageIndex + 1,
+                index: pageIndex,
                 slots: new Array(16)
             };
             for (let slotIndex = 0; slotIndex < 16; ++slotIndex) {
                 banks.value[bankIndex].pages[pageIndex].slots[slotIndex] = {
-                    index: slotIndex + 1,
+                    index: slotIndex,
                     comment: ""
                 };
             }
@@ -168,11 +143,46 @@
         }
     }
 
-    function debug() {
-        utility.value.swapBank(1, 2);
-        update();
-        //this.download();
+    function openFile() {
+        fileOpenRef.value.pickFiles();
     }
+
+    function swapPage(bankIndex, pageIndexA, pageIndexB) {
+        if (isValidBankIndex(bankIndex) && isValidPageIndex(pageIndexA) && isValidPageIndex(pageIndexB)) {
+            utility.value.swapPage(bankIndex, pageIndexA, bankIndex, pageIndexB);
+            update();
+        }
+        console.log(`${bankIndex} - ${pageIndexA} - ${pageIndexB}`);
+    }
+
+    function copyPage(bankIndex, pageIndex) {
+        if (isValidBankIndex(bankIndex) && isValidPageIndex(pageIndex)) {
+            console.log(`copy ${bankIndex} - ${pageIndex}`);
+            clipBoard.value.bankIndex = bankIndex;
+            clipBoard.value.pageIndex = pageIndex;
+        }
+    }
+
+    function pastePage(bankIndex, pageIndex) {
+        if (isValidBankIndex(bankIndex) && isValidPageIndex(pageIndex) && clipBoard.value.bankIndex != -1) {
+            utility.value.copyAndPastePage(clipBoard.value.bankIndex, clipBoard.value.pageIndex, bankIndex, pageIndex);
+            clipBoard.value.bankIndex = -1;
+            clipBoard.value.pageIndex = -1;
+            update();
+        }
+        console.log(`${bankIndex} - ${pageIndex}`);
+    }
+
+    function swapBank(bankIndexA, bankIndexB) {
+        if (isValidBankIndex(bankIndexA) && isValidBankIndex(bankIndexB)) {
+            utility.value.swapBank(bankIndexA, bankIndexB);
+            update();  
+        }
+    }
+
+    function isValidBankIndex(index) { return (0 <= index && index <= 15); }
+
+    function isValidPageIndex(index) { return (0 <= index && index <= 15); }
 </script>
 
 <style>

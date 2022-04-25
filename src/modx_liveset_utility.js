@@ -200,8 +200,6 @@ class ModxLivesetUtility {
 
         let writeIndex = this.elstAddress_ + 0x04 * 3;
         for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
-            console.log(`bankData[${bankIndex}] = ${bankData[bankIndex]}`);
-            console.log(`bankData[${bankIndex}].length = ${bankData[bankIndex].length}`);
             for (let readIndex = 0; readIndex < bankData[bankIndex].length; ++readIndex) {
                 this.x8aDataBuffer_.writeUInt8(bankData[bankIndex].readUInt8(readIndex), writeIndex);
                 ++writeIndex;
