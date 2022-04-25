@@ -32,7 +32,7 @@ Bank x 8 {
 0x04 byte : Size ("Num of banks" - end of this section)
 0x04 byte : Num of banks
 
-Bank x 8 {
+Bank x 8 { // size = 42 + name
     0x04 byte : "Entr"
     0x04 byte : Size from here to the end of this section
     

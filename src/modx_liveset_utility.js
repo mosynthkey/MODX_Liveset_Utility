@@ -1,15 +1,17 @@
 // YAMAHA MODX Liveset Utility
-// Copyright © 2021 Masaki Ono. All rights reserved.
+// Copyright © 2022 Masaki Ono. All rights reserved.
 
 // these const values are only used in ModxLivesetUtility
 
 import { Buffer } from 'buffer';
+//import { write } from 'fs';
 
 const NUM_BANK = 8;
 const NUM_PAGE = 16;
 const NUM_SLOT = 16;
 const SIZE_SLOT = 0x11E;
 const SIZE_PAGE = SIZE_SLOT * 16 + 0x15;
+const SIZE_BANK = SIZE_PAGE * 16 + 0x04 + 0x04 + 0x04 + 0x15;
 
 class ModxLivesetUtility {
     constructor() {
@@ -35,6 +37,8 @@ class ModxLivesetUtility {
         }
 
         this.numOfBanks_ = 0;
+
+        this.elstAddress_ = 0;
     }
 
     setX8ADataBuffer(x8aDataBuffer) {
@@ -75,14 +79,13 @@ class ModxLivesetUtility {
             }
         }
 
-        // ELST (Currently not used)
-        /*
+        // ELST       
         let elst_addr_index = header_buffer.indexOf(Buffer.from('ELST'));
         if (elst_addr_index < 0) throw('ELST not found');
         elst_addr_index += 0x04;
+        this.elstAddress_ = x8aDataBuffer.readInt32BE(elst_addr_index);
 
-        const elst_addr = x8aDataBuffer.readInt32BE(elst_addr_index);
-
+        /*
         readIndex = elst_addr + 0x0c;
         for (let bankIndex = 0; bankIndex < this.numOfBanks_; ++bankIndex) {
             readIndex += 0x04; // Skip "Entr"
@@ -165,6 +168,54 @@ class ModxLivesetUtility {
     swapAllPages(bankIndexA, bankIndexB) {
         for (let pageIndex = 0; pageIndex < NUM_PAGE; ++pageIndex) {
             this.swapPage(bankIndexA, pageIndex, bankIndexB, pageIndex);
+        }
+    }
+
+    swapBank(bankIndexA, bankIndexB) {
+        // Edit ELIST
+        let readIndex = this.elstAddress_ + 0x04 * 3;
+        let bankData = new Array(NUM_BANK);
+        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+            const bankEntryAddress = readIndex;
+            let size = this.x8aDataBuffer_.readInt32BE(bankEntryAddress + 0x04) + 0x04 /* Entr */ + 0x04 /* size */;
+
+            // swap chunk
+            if (bankIndex == bankIndexA) {
+                bankData[bankIndexB] = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+            } else if (bankIndex == bankIndexB) {
+                bankData[bankIndexA] = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+            } else {
+                bankData[bankIndex] = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+            }
+
+            readIndex += size;
+        }
+
+        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+            // correct bank index
+            bankData[bankIndex].writeUInt16BE(bankIndex,                 0x04 * 3           ); // bankIndex
+            bankData[bankIndex].writeUInt16BE(0x0c + 0x1F71 * bankIndex, 0x04 * 3 + 0x02    ); // size?
+            bankData[bankIndex].writeUInt16BE(bankIndex,                 0x04 * 3 + 0x02 * 3); // bankIndex
+        }   
+
+        let writeIndex = this.elstAddress_ + 0x04 * 3;
+        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+            console.log(`bankData[${bankIndex}] = ${bankData[bankIndex]}`);
+            console.log(`bankData[${bankIndex}].length = ${bankData[bankIndex].length}`);
+            for (let readIndex = 0; readIndex < bankData[bankIndex].length; ++readIndex) {
+                this.x8aDataBuffer_.writeUInt8(bankData[bankIndex].readUInt8(readIndex), writeIndex);
+                ++writeIndex;
+            }
+        }
+
+        // Edit DLST
+        const indexA =  this.bankAddresses_[bankIndexA];
+        const indexB =  this.bankAddresses_[bankIndexB];
+
+        for (let index = 0; index < SIZE_BANK; ++index) {
+            const aData = this.x8aDataBuffer_[indexA + index];
+            this.x8aDataBuffer_[indexA + index] = this.x8aDataBuffer_[indexB + index];
+            this.x8aDataBuffer_[indexB + index] = aData;
         }
     }
 
