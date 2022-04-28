@@ -48,6 +48,11 @@ class ModxLivesetUtility {
 
         // Search DLST from header
         const header_buffer = x8aDataBuffer.slice(0, 0x110);
+
+        if (header_buffer.slice(0, 11).toString() != "YAMAHA-YSFC")  {
+            throw("Invalid data")
+        }
+
         let dlst_addr_index = header_buffer.indexOf(Buffer.from('DLST'));
         if (dlst_addr_index < 0) throw('DLST not found in the header');
         dlst_addr_index += 0x04;
@@ -56,14 +61,13 @@ class ModxLivesetUtility {
         // Mark addresses
         this.numOfBanks_ = x8aDataBuffer.readInt16BE(dlst_addr + 4);
         if (NUM_BANK < this.numOfBanks_) throw("Invalid number of banks")
-        console.log("Num of banks : " + this.numOfBanks_);
 
-        let readIndex = dlst_addr + 4 /* DLST */ + 8 /* ? */;
-        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+        let readIndex = dlst_addr + 4 /* DLST */ + 4 /* Size */ + 4 /* Num of Banks*/;
+        for (let bankIndex = 0; bankIndex < this.numOfBanks_; ++bankIndex) {
             this.bankAddresses_[bankIndex] = readIndex;
 
             // Skip "Data" + ?
-            readIndex += 4 /* Data */ + 8 /* ? */;
+            readIndex += 4 /* Data */ + 4 /* Size */ + 4 /* Num of Banks*/;
 
             this.bankNameAddresses_[bankIndex] = readIndex;
             readIndex += 0x15;
@@ -174,32 +178,38 @@ class ModxLivesetUtility {
     swapBank(bankIndexA, bankIndexB) {
         // Edit ELIST
         let readIndex = this.elstAddress_ + 0x04 * 3;
-        let bankData = new Array(NUM_BANK);
-        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+        let bankData = new Array(this.numOfBanks_);
+        let bankNumbers = new Array(this.numOfBanks_);
+        for (let bankIndex = 0; bankIndex < this.numOfBanks_; ++bankIndex) {
             const bankEntryAddress = readIndex;
             let size = this.x8aDataBuffer_.readInt32BE(bankEntryAddress + 0x04) + 0x04 /* Entr */ + 0x04 /* size */;
 
+            const data = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+            const bankNumber = data.readUInt16BE(0x04 * 3 + 0x02 * 3);
+            console.log(`bankNumber = ${bankNumber}`);
+
             // swap chunk
             if (bankIndex == bankIndexA) {
-                bankData[bankIndexB] = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+                bankData   [bankIndexB] = data;
             } else if (bankIndex == bankIndexB) {
-                bankData[bankIndexA] = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+                bankData   [bankIndexA] = data;
             } else {
-                bankData[bankIndex] = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
+                bankData[bankIndex] = data;
             }
+            bankNumbers[bankIndex] = bankNumber;
 
             readIndex += size;
         }
 
-        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+        for (let bankIndex = 0; bankIndex < this.numOfBanks_; ++bankIndex) {
             // correct bank index
             bankData[bankIndex].writeUInt16BE(bankIndex,                 0x04 * 3           ); // bankIndex
             bankData[bankIndex].writeUInt16BE(0x0c + 0x1F71 * bankIndex, 0x04 * 3 + 0x02    ); // size?
-            bankData[bankIndex].writeUInt16BE(bankIndex,                 0x04 * 3 + 0x02 * 3); // bankIndex
+            bankData[bankIndex].writeUInt16BE(bankNumbers[bankIndex],    0x04 * 3 + 0x02 * 3); // bankIndex
         }   
 
         let writeIndex = this.elstAddress_ + 0x04 * 3;
-        for (let bankIndex = 0; bankIndex < NUM_BANK; ++bankIndex) {
+        for (let bankIndex = 0; bankIndex < this.numOfBanks_; ++bankIndex) {
             for (let readIndex = 0; readIndex < bankData[bankIndex].length; ++readIndex) {
                 this.x8aDataBuffer_.writeUInt8(bankData[bankIndex].readUInt8(readIndex), writeIndex);
                 ++writeIndex;
@@ -230,6 +240,10 @@ class ModxLivesetUtility {
                 }
             }
         }
+    }
+
+    isValidData() {
+        return this.isDataValid_;
     }
 
     createValidStringFromNullTerminatedBufferIndex(index, size) {
