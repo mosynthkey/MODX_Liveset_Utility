@@ -19,5 +19,9 @@ module.exports = {
 
     transpileDependencies: [
       'quasar'
-    ]
+    ],
+
+    outputDir: 'docs',
+    assetsDir: './',
+    publicPath: './',
 }
