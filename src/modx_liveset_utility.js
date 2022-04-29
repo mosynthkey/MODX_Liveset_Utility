@@ -186,7 +186,6 @@ class ModxLivesetUtility {
 
             const data = Buffer.from(this.x8aDataBuffer_.slice(bankEntryAddress, bankEntryAddress + size));
             const bankNumber = data.readUInt16BE(0x04 * 3 + 0x02 * 3);
-            console.log(`bankNumber = ${bankNumber}`);
 
             // swap chunk
             if (bankIndex == bankIndexA) {
