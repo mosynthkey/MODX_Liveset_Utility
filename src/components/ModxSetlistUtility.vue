@@ -167,7 +167,7 @@
                                         <div class="text-red-14 text-h6">
                                             Please use this app at your own risk.<br>
                                             The author is not responsible for any damage caused by the use of this
-                                            software.<br>
+                                            app.<br>
                                             このソフトの使用は自己責任でお願いします。<br>
                                             ソフトの使用によるいかなる損害等については責任をおいかねます。<br>
                                         </div>
