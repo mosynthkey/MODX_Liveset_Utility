@@ -118,31 +118,31 @@
 
                             <q-separator />
 
-                            <q-list dense class="bg-card-background text-white" style="max-width: 600px" v-for="page in bank.pages"
-                                :key="page.index">
-                                <q-item>
-                                    <q-item-section>
-                                        <b>{{ page.name }}</b>
-                                    </q-item-section>
+                            <draggable v-model="bank.pages" @end="onDragEnd(bank.index, $event)" item-key="index" tag="q-list" :component-data="{ dense: true, class: 'bg-card-background text-white', style: 'max-width: 600px' }">
+                                <template #item="{element: page}">
+                                    <q-item>
+                                        <q-item-section>
+                                            <b>{{ page.name }}</b>
+                                        </q-item-section>
 
-                                    <q-item-section side>
-                                        <div class="text-grey-8 q-gutter-xs">
-                                            <q-btn :disabled="page.index==0"
-                                                @click="swapPage(bank.index, page.index, page.index - 1)" :class="page.index==0 ? 'text-grey-8' : 'text-white'"
-                                                size="10px" flat dense round icon="arrow_upward"/>
-                                            <q-btn :disabled="page.index==15"
-                                                @click="swapPage(bank.index, page.index, page.index + 1)" :class="page.index==15 ? 'text-grey-8' : 'text-white'"
-                                                size="10px" flat dense round icon="arrow_downward" />
-                                            <q-btn v-if="clipBoard.bankIndex==-1" @click="copyPage(bank.index, page.index)" class="text-white" size="10px"
-                                                flat dense round icon="content_copy" />
-                                            <q-btn v-if="clipBoard.bankIndex!=-1"
-                                                @click="pastePage(bank.index, page.index)" class="text-white" size="10px"
-                                                flat dense round icon="content_paste" />
-                                        </div>
-                                    </q-item-section>
-
-                                </q-item>
-                            </q-list>
+                                        <q-item-section side>
+                                            <div class="text-grey-8 q-gutter-xs">
+                                                <q-btn :disabled="page.index==0"
+                                                    @click="swapPage(bank.index, page.index, page.index - 1)" :class="page.index==0 ? 'text-grey-8' : 'text-white'"
+                                                    size="10px" flat dense round icon="arrow_upward"/>
+                                                <q-btn :disabled="page.index==15"
+                                                    @click="swapPage(bank.index, page.index, page.index + 1)" :class="page.index==15 ? 'text-grey-8' : 'text-white'"
+                                                    size="10px" flat dense round icon="arrow_downward" />
+                                                <q-btn v-if="clipBoard.bankIndex==-1" @click="copyPage(bank.index, page.index)" class="text-white" size="10px"
+                                                    flat dense round icon="content_copy" />
+                                                <q-btn v-if="clipBoard.bankIndex!=-1"
+                                                    @click="pastePage(bank.index, page.index)" class="text-white" size="10px"
+                                                    flat dense round icon="content_paste" />
+                                            </div>
+                                        </q-item-section>
+                                    </q-item>
+                                </template>
+                            </draggable>
 
                         </q-card>
                     </div>
@@ -224,6 +224,7 @@
     import {
         ref
     } from 'vue'
+    import draggable from 'vue-draggable-next'
 
     let isLoaded = ref(false);
     let isValid = ref(false);
@@ -302,6 +303,59 @@
                     };
                 }
             }
+        }
+    }
+
+    function onDragEnd(bankIndex, event) {
+        const oldIndex = event.oldIndex;
+        const newIndex = event.newIndex;
+
+        if (oldIndex === newIndex) {
+            return;
+        }
+
+        // `vue-draggable-next` updates the v-model (bank.pages) automatically.
+        // We need to call utility.value.swapPage to update the internal data structure.
+        // However, `swapPage` assumes original indices.
+        // Since `bank.pages` is already updated, we need to reconstruct the original state
+        // or tell `swapPage` the "true" old and new indices based on the current state.
+
+        // For simplicity, we'll inform the utility about the swap.
+        // The `modx_liveset_utility.js` needs to be adjusted or a new method
+        // needs to be created if `swapPage` cannot handle this.
+        // For now, let's assume we need to update the utility's internal representation
+        // based on the new visual order.
+
+        // Create a temporary copy of the pages array before the visual update by draggable
+        // This is tricky because draggable updates it immediately.
+        // A more robust way would be to get the original order from `utility.value`
+        // and then apply the changes.
+
+        // Let's find the actual page objects involved in the swap based on their names or unique IDs
+        // if `page.index` is not reliable after draggable updates the array.
+        // Assuming `page.name` can be a temporary unique identifier for this operation,
+        // or ideally, `page.originalIndex` if we were to add it.
+
+        // Given that `bank.pages` is already updated by `vue-draggable-next`,
+        // the `newIndex` is the current position of the dragged item.
+        // The item that was originally at `oldIndex` is now at `newIndex`.
+        // We need to tell the utility to perform the same swap.
+
+        // The challenge: utility.swapPage(bankIndex, originalOldIndex, bankIndex, originalNewIndex)
+        // `event.oldIndex` and `event.newIndex` are correct with respect to the array *before* the item is dropped.
+        // `vue-draggable-next` updates `bank.pages` *after* the drop.
+        // So, the `bank.pages` array reflects the new order when onDragEnd is called.
+
+        // Let's verify how `utility.value.swapPage` works. It swaps two elements in its internal buffer.
+        // We need to provide the correct *original* indices to `swapPage`.
+        // `event.oldIndex` and `event.newIndex` from vue-draggable-next are exactly what we need for `swapPage`.
+
+        if (isValidBankIndex(bankIndex) && isValidPageIndex(oldIndex) && isValidPageIndex(newIndex)) {
+            utility.value.swapPage(bankIndex, oldIndex, bankIndex, newIndex);
+            // `update()` will re-read from utility and re-assign indices.
+            // This is crucial for the `key` and for the up/down buttons to work correctly.
+            update();
+            isEdit.value = true;
         }
     }
 

@@ -10,7 +10,9 @@
     "@quasar/extras": "^1.16.8",
     "core-js": "^3.33.3",
     "quasar": "^2.14.0",
-    "vue": "^3.3.9"
+    "sortablejs": "^1.15.6",
+    "vue": "^3.3.9",
+    "vue-draggable-next": "^2.2.1"
   },
   "devDependencies": {
     "@vue/cli-service": "^5.0.8"
