@@ -20,7 +20,8 @@
     "qs": "^6.16.0",
     "serialize-javascript": "^7.1.1",
     "uuid": "^11.1.1",
-    "postcss": "^8.5.28"
+    "postcss": "^8.5.28",
+    "browserslist": "^4.28.9"
   },
   "browserslist": [
     "> 1%",
